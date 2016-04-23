@@ -38,6 +38,7 @@ class ExtendedEnvBuilder(venv.EnvBuilder):
         self.nopip = kwargs.pop('nopip', False)
         self.verbose = kwargs.pop('verbose', False)
         self.context = None
+        self.python_name = None
         super().__init__(*args, **kwargs)
 
     def create(self, env_dir, python_name=None):
@@ -47,6 +48,11 @@ class ExtendedEnvBuilder(venv.EnvBuilder):
         :param python_name:
         :return:
         """
+        if python_name is not None:
+            self.python_name = python_name
+        else:
+            self.python_name = "python3"
+
         super().create(env_dir)
         return clean_env(self.context, self.verbose)
 
@@ -59,7 +65,6 @@ class ExtendedEnvBuilder(venv.EnvBuilder):
         Returns a context object which holds paths in the environment,
         for use by subsequent logic.
         """
-
         def create_if_needed(d):
             if not os.path.exists(d):
                 os.makedirs(d)
@@ -84,7 +89,7 @@ class ExtendedEnvBuilder(venv.EnvBuilder):
 
             executable = None
             for p in base_binpath.split(os.pathsep):
-                exepath = os.path.join(p, "python3")   # TODO: Look for specified python distribution
+                exepath = os.path.join(p, self.python_name)
                 if os.path.exists(exepath):
                     executable = exepath
                     break
@@ -97,6 +102,7 @@ class ExtendedEnvBuilder(venv.EnvBuilder):
             else:
                 executable = sys.executable
 
+        # TODO: Look for specified python distribution when outside of a virtual env when running
         dirname, exename = os.path.split(os.path.abspath(executable))
         context.executable = executable
         context.python_dir = dirname
@@ -201,7 +207,7 @@ class clean_env:
             print("HAS PYTHONHOME")
             self.new_environ.pop("PYTHONHOME")
 
-        self.install_script('pip', 'https://bootstrap.pypa.io/get-pip.py')
+        self.install_pip()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -210,10 +216,10 @@ class clean_env:
 
 
 if __name__ == "__main__":
-    env = ExtendedEnvBuilder()
+    env = ExtendedEnvBuilder(verbose=True)
     # Note: Will always create a clean copy of current python environment.
     # Relies on other tools, build systems, to iterate over multiple python executables.
-    with env.create('foo') as fooenv:
+    with env.create('foo', 'python3.5') as fooenv:
         # for k, v in iter(fooenv.context.__dict__.items()):
         #     print("{}: {}".format(k, v))
         fooenv.run_in_env('../tests/helloworld.py')
