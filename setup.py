@@ -31,23 +31,20 @@ setup(
     author_email='andrew.godbehere@sumupanalytics.com',
     url='https://github.com/agodbehere/with-venv',
     packages=[
-        'with-venv',
+        'with_venv',
     ],
-    package_dir={'with-venv':
-                 'with-venv'},
+    package_dir={'with_venv':
+                 'with_venv'},
     include_package_data=True,
     install_requires=requirements,
     license="ISCL",
-    zip_safe=False,
+    zip_safe=True,
     keywords='with-venv',
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: ISC License (ISCL)',
         'Natural Language :: English',
-        "Programming Language :: Python :: 2",
-        'Programming Language :: Python :: 2.6',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
