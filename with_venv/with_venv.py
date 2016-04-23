@@ -30,56 +30,25 @@ class ExtendedEnvBuilder(venv.EnvBuilder):
                    created environment.
     :param nopip: If True, pip is not installed into the created
                   environment.
-    :param progress: If setuptools or pip are installed, the progress of the
-                     installation can be monitored by passing a progress
-                     callable. If specified, it is called with two
-                     arguments: a string indicating some progress, and a
-                     context indicating where the string is coming from.
-                     The context argument can have one of three values:
-                     'main', indicating that it is called from virtualize()
-                     itself, and 'stdout' and 'stderr', which are obtained
-                     by reading lines from the output streams of a subprocess
-                     which is used to install the app.
-
-                     If a callable is not specified, default progress
-                     information is output to sys.stderr.
+    :param context: Information and environment variables for the virtual environment being created
+    :param verbose: Flag, whether or not to show output from scripts run in environment
     """
-
     def __init__(self, *args, **kwargs):
         self.nodist = kwargs.pop('nodist', False)
         self.nopip = kwargs.pop('nopip', False)
-        self.progress = kwargs.pop('progress', None)
         self.verbose = kwargs.pop('verbose', False)
         self.context = None
         super().__init__(*args, **kwargs)
 
-    def create(self, env_dir):
+    def create(self, env_dir, python_name=None):
+        """
+        Create a virtual environment
+        :param env_dir:
+        :param python_name:
+        :return:
+        """
         super().create(env_dir)
-        return clean_env(self.context)   # TODO: Get a better handle on self.context
-
-    def post_setup(self, context):
-        """
-        Set up any packages which need to be pre-installed into the
-        environment being created.
-
-        :param context: The information for the environment creation request
-                        being processed.
-        """
-        self.context = context
-        #os.environ['VIRTUAL_ENV'] = context.env_dir
-        #if not self.nodist:
-        #    self.install_setuptools(context)
-        # Can't install pip without setuptools
-        #if not self.nopip and not self.nodist:
-        #    self.install_pip(context)
-    '''
-    def ensure_directories(self, env_dir):
-        context = super().ensure_directories(env_dir)
-        print("ORIGINAL CONTEXT: ")
-        for k, v in iter(context.__dict__.items()):
-            print("{}: {}".format(k, v))
-        return context
-    '''
+        return clean_env(self.context, self.verbose)
 
     def ensure_directories(self, env_dir):
         """
@@ -106,24 +75,20 @@ class ExtendedEnvBuilder(venv.EnvBuilder):
         create_if_needed(env_dir)
         env = os.environ
 
-        # TODO: CHANGE EXECUTABLE WHEN RUNNING FROM WITHIN A VIRTUALENV
+        # Note: If running this from inside a virtual environment, do some extra work to untangle from current venv.
         if 'VIRTUAL_ENV' in os.environ:
             vpath = os.environ['VIRTUAL_ENV']
-            # print("VPATH: {}".format(vpath))
             base_binpath = os.pathsep.join(
                 [x for x in os.environ['PATH'].split(os.pathsep) if not x.startswith(vpath)]
             )
-            # print("BASEPATH: {}".format(base_binpath))
+
             executable = None
             for p in base_binpath.split(os.pathsep):
-                # exepath = os.path.join(p, "python3.5")
-                exepath = os.path.join(p, "python3")
-                # print("LOOKING FOR {}".format(exepath))
+                exepath = os.path.join(p, "python3")   # TODO: Look for specified python distribution
                 if os.path.exists(exepath):
-                    # print("UPDATING EXECUTABLE: {}".format(exepath))
                     executable = exepath
-                    # self.context.env_exe = exepath # TODO: REMAKE SYMLINK
                     break
+
             if not executable:
                 raise RuntimeError("No valid python executable discovered.")
         else:
@@ -159,6 +124,7 @@ class ExtendedEnvBuilder(venv.EnvBuilder):
         context.bin_name = binname
         context.env_exe = os.path.join(binpath, exename)
         create_if_needed(binpath)
+        self.context = context
         return context
 
 
@@ -166,9 +132,9 @@ class clean_env:
     """
     Manage a clean environment.
     """
-
-    def __init__(self, context):
+    def __init__(self, context, verbose):
         self.context = context
+        self.verbose = verbose
 
     def reader(self, stream):
         """
@@ -180,17 +146,17 @@ class clean_env:
             if not s:
                 break
 
-            # if not self.verbose:
-            #    sys.stderr.write('.')
-            # else:
-            sys.stderr.write(s.decode('utf-8'))
-            sys.stderr.flush()
-            #sys.stderr.write('.')
+            if not self.verbose:
+                sys.stderr.write('.')
+            else:
+                sys.stderr.write(s.decode('utf-8'))
+                sys.stderr.flush()
 
         stream.close()
 
-    def install_script(self, name, url):
-
+    def install_pip(self):
+        name = 'pip'
+        url = 'https://bootstrap.pypa.io/get-pip.py'
         _, _, path, _, _, _ = urlparse(url)
         fn = os.path.split(path)[-1]
         binpath = self.context.bin_path
@@ -205,30 +171,10 @@ class clean_env:
         sys.stderr.flush()
 
         # Install in the env
-        args = [self.context.env_exe, fn]
-
-        print("ENV_EXE: {}".format(self.context.env_exe))
-        print("PYTHON_EXE: {}".format(self.context.python_exe))
-        #args = ['python', fn]
-        #print("args: {}".format(args))
-        p = Popen(args, stdout=PIPE, stderr=PIPE, cwd=binpath, env=self.new_environ, start_new_session=True)
-        t1 = Thread(target=self.reader, args=(p.stdout,))
-        t1.start()
-        t2 = Thread(target=self.reader, args=(p.stderr,))
-        t2.start()
-        p.wait()
-        t1.join()
-        t2.join()
-
-        sys.stderr.write('done.\n')
-        # Clean up - no longer needed
+        self.run_in_env(os.path.join(binpath, fn))
         os.unlink(distpath)
 
     def run_in_env(self, script):
-        #for k, v in iter(self.new_environ.items()):
-        #    print("{}: {}".format(k, v))
-        #print("RUNNING {} using {}".format(script, self.context.env_exe))
-        #print("args: {}".format([self.context.env_exe, script]))
         p = Popen([self.context.python_exe, script], stdout=PIPE, stderr=PIPE, env=self.new_environ, cwd='.',
                   start_new_session=True)
         t1 = Thread(target=self.reader, args=(p.stdout,))
@@ -241,13 +187,10 @@ class clean_env:
 
     def __enter__(self):
         # activate
-
         if 'VIRTUAL_ENV' in os.environ:
             vpath = os.environ['VIRTUAL_ENV']
-            #print("VPATH: {}".format(vpath))
-            base_binpath = os.pathsep.join([x for x in os.environ['PATH'].split(os.pathsep) if not x.startswith(vpath)])
-            #print("BASEPATH: {}".format(base_binpath))
-
+            base_binpath = os.pathsep.join([x for x in os.environ['PATH'].split(os.pathsep)
+                                            if not x.startswith(vpath)])
         else:
             base_binpath = os.environ['PATH']
 
@@ -257,31 +200,20 @@ class clean_env:
         if "PYTHONHOME" in self.new_environ:
             print("HAS PYTHONHOME")
             self.new_environ.pop("PYTHONHOME")
-        '''
-        self.install_script('setuptools', 'https://bitbucket.org/pypa/setuptools/downloads/ez_setup.py')
 
-        # clear up the setuptools archive which gets downloaded
-        def pred(o):
-            return o.startswith('setuptools-') and o.endswith('.tar.gz')
-        # pred = lambda o: o.startswith('setuptools-') and o.endswith('.tar.gz')
-        files = filter(pred, os.listdir(self.context.bin_path))
-        for f in files:
-            f = os.path.join(self.context.bin_path, f)
-            os.unlink(f)
-        '''
         self.install_script('pip', 'https://bootstrap.pypa.io/get-pip.py')
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        # TODO: Remove the virtual environment.
+        # TODO: Optionally remove the virtual environment.
         pass
 
 
 if __name__ == "__main__":
     env = ExtendedEnvBuilder()
-    # Note: Will always create a clean copy of current python environment. Relies on other tools, build systems, to iterate over multiple python executables.
+    # Note: Will always create a clean copy of current python environment.
+    # Relies on other tools, build systems, to iterate over multiple python executables.
     with env.create('foo') as fooenv:
-        for k, v in iter(fooenv.context.__dict__.items()):
-            print("{}: {}".format(k, v))
-        fooenv.run_in_env('test_articulation.py')
-    # os.environ['VIRTUAL_ENV'] = env.context.env_dir
+        # for k, v in iter(fooenv.context.__dict__.items()):
+        #     print("{}: {}".format(k, v))
+        fooenv.run_in_env('../tests/helloworld.py')
