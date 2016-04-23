@@ -10,10 +10,10 @@ Tests for `with-venv` module.
 
 import unittest
 
-from with-venv import with-venv
+from with_venv import with_venv
 
 
-class TestWith-venv(unittest.TestCase):
+class TestWith_venv(unittest.TestCase):
 
     def setUp(self):
         pass
