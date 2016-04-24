@@ -180,6 +180,33 @@ class clean_env:
         self.run_in_env(os.path.join(binpath, fn))
         os.unlink(distpath)
 
+    # TODO: 'save' function, to save artifacts to artifact_path
+    # TODO: Option to run in a tmp directory, offer options to copy supporting files into directory?
+    # TODO: Control env vars like PATH
+    # TODO: Set include files/directories to copy into tmp directory
+    # TODO: Build python wheel with -t to specify location of wheel file
+
+    def install_dependency(self, dep, other_args=None):   # TODO: pip options, like local path to search, --find-links...
+        if isinstance(dep, str):
+            dep = [dep]
+
+        for d in dep:
+            cmd = os.path.join(self.context.bin_path, 'pip') + ' install --no-clean ' + d
+            if other_args is not None:
+                cmd += " " + other_args
+            parsed_cmd = shlex.split(cmd)
+            print("FULL CMD: {}".format(cmd))
+            print("PARSED CMD: {}".format(parsed_cmd))
+            p = Popen(parsed_cmd, stdout=PIPE, stderr=PIPE, env=self.new_environ, cwd='.',
+                      start_new_session=True)
+            t1 = Thread(target=self.reader, args=(p.stdout,))
+            t1.start()
+            t2 = Thread(target=self.reader, args=(p.stderr,))
+            t2.start()
+            p.wait()
+            t1.join()
+            t2.join()
+
     def run_in_env(self, script):
         p = Popen([self.context.python_exe, script], stdout=PIPE, stderr=PIPE, env=self.new_environ, cwd='.',
                   start_new_session=True)
