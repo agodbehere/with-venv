@@ -230,6 +230,8 @@ class clean_env:
         p.wait()
         t1.join()
         t2.join()
+        if p.returncode != 0:  # mirror nonzero return call from child process
+            sys.exit(p.returncode)
 
     def __enter__(self):
         # activate
