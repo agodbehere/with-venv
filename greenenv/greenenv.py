@@ -17,6 +17,15 @@ from threading import Thread
 from subprocess import Popen, PIPE
 import os.path
 import types
+import shlex
+
+import os
+
+artifact_path = '.greenenv'
+if not os.path.exists(artifact_path):
+    os.makedirs(artifact_path)
+
+import tempfile
 
 
 class ExtendedEnvBuilder(venv.EnvBuilder):
@@ -33,9 +42,10 @@ class ExtendedEnvBuilder(venv.EnvBuilder):
     :param context: Information and environment variables for the virtual environment being created
     :param verbose: Flag, whether or not to show output from scripts run in environment
     """
+
     def __init__(self, *args, **kwargs):
-        self.nodist = kwargs.pop('nodist', False)
-        self.nopip = kwargs.pop('nopip', False)
+        # self.nodist = kwargs.pop('nodist', False)
+        # self.nopip = kwargs.pop('nopip', False)
         self.verbose = kwargs.pop('verbose', False)
         self.context = None
         self.python_name = None
@@ -65,6 +75,7 @@ class ExtendedEnvBuilder(venv.EnvBuilder):
         Returns a context object which holds paths in the environment,
         for use by subsequent logic.
         """
+
         def create_if_needed(d):
             if not os.path.exists(d):
                 os.makedirs(d)
@@ -138,6 +149,7 @@ class clean_env:
     """
     Manage a clean environment.
     """
+
     def __init__(self, context, verbose):
         self.context = context
         self.verbose = verbose
@@ -185,27 +197,28 @@ class clean_env:
     # TODO: Control env vars like PATH
     # TODO: Set include files/directories to copy into tmp directory
     # TODO: Build python wheel with -t to specify location of wheel file
-
-    def install_dependency(self, dep, other_args=None):   # TODO: pip options, like local path to search, --find-links...
+    # TODO: pip options, like local path to search, --find-links...
+    def install_dependency(self, dep, **kwargs):
         if isinstance(dep, str):
             dep = [dep]
 
-        for d in dep:
-            cmd = os.path.join(self.context.bin_path, 'pip') + ' install --no-clean ' + d
-            if other_args is not None:
-                cmd += " " + other_args
-            parsed_cmd = shlex.split(cmd)
-            print("FULL CMD: {}".format(cmd))
-            print("PARSED CMD: {}".format(parsed_cmd))
-            p = Popen(parsed_cmd, stdout=PIPE, stderr=PIPE, env=self.new_environ, cwd='.',
-                      start_new_session=True)
-            t1 = Thread(target=self.reader, args=(p.stdout,))
-            t1.start()
-            t2 = Thread(target=self.reader, args=(p.stderr,))
-            t2.start()
-            p.wait()
-            t1.join()
-            t2.join()
+        dep_str = ' '.join(dep)
+        kwargstr = ' '.join(["--{key} {val}".format(key=k.replace('_', '-'), val=v)
+                             for k, v in iter(kwargs.items())])
+        cmd = os.path.join(self.context.bin_path, 'pip') + ' install ' + dep_str + ' ' + kwargstr
+        parsed_cmd = shlex.split(cmd)
+
+        print("FULL CMD: {}".format(cmd))
+        print("PARSED CMD: {}".format(parsed_cmd))
+        p = Popen(parsed_cmd, stdout=PIPE, stderr=PIPE, env=self.new_environ, cwd='.',
+                  start_new_session=True)
+        t1 = Thread(target=self.reader, args=(p.stdout,))
+        t1.start()
+        t2 = Thread(target=self.reader, args=(p.stderr,))
+        t2.start()
+        p.wait()
+        t1.join()
+        t2.join()
 
     def run_in_env(self, script):
         p = Popen([self.context.python_exe, script], stdout=PIPE, stderr=PIPE, env=self.new_environ, cwd='.',
@@ -249,4 +262,9 @@ if __name__ == "__main__":
     with env.create('foo', 'python3.5') as fooenv:
         # for k, v in iter(fooenv.context.__dict__.items()):
         #     print("{}: {}".format(k, v))
+        target_dir = os.path.expanduser("~/tmp")
+        print("TARGET DIR: {}".format(target_dir))
+        fooenv.install_dependency(
+            [os.path.expanduser('~/Code/anser-indicus/'), 'numpy', 'pymystem3', 'tables', 'pyparsing',
+             'scipy', 'sklearn'])  # , other_args="-t {}".format(target_dir))
         fooenv.run_in_env('../tests/helloworld.py')
