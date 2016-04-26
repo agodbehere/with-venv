@@ -1,22 +1,22 @@
 ===============================
-venv Context Manager
+greenenv Context Manager
 ===============================
 
-.. image:: https://img.shields.io/pypi/v/with-venv.svg
-        :target: https://pypi.python.org/pypi/with-venv
+.. image:: https://img.shields.io/pypi/v/greenenv.svg
+        :target: https://pypi.python.org/pypi/greenenv
 
-.. image:: https://img.shields.io/travis/agodbehere/with-venv.svg
-        :target: https://travis-ci.org/agodbehere/with-venv
+.. image:: https://img.shields.io/travis/agodbehere/greenenv.svg
+        :target: https://travis-ci.org/agodbehere/greenenv
 
-.. image:: https://readthedocs.org/projects/with-venv/badge/?version=latest
-        :target: https://readthedocs.org/projects/with-venv/?badge=latest
+.. image:: https://readthedocs.org/projects/greenenv/badge/?version=latest
+        :target: https://readthedocs.org/projects/greenenv/?badge=latest
         :alt: Documentation Status
 
 
 Context manager controls venv allowing functions to be run in a different interpreter.
 
 * Free software: ISC license
-* Documentation: https://with-venv.readthedocs.org.
+* Documentation: https://greenenv.readthedocs.org.
 
 Features
 --------

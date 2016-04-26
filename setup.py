@@ -23,7 +23,7 @@ test_requirements = [
 ]
 
 setup(
-    name='with-venv',
+    name='greenenv',
     version='0.0.1',
     description="Context manager controls venv allowing functions to be run in a different interpreter.",
     long_description=readme + '\n\n' + history,
@@ -31,15 +31,15 @@ setup(
     author_email='andrew.godbehere@sumupanalytics.com',
     url='https://github.com/agodbehere/with-venv',
     packages=[
-        'with_venv',
+        'greenenv',
     ],
-    package_dir={'with_venv':
-                 'with_venv'},
+    package_dir={'greenenv':
+                 'greenenv'},
     include_package_data=True,
     install_requires=requirements,
     license="ISCL",
     zip_safe=True,
-    keywords='with-venv',
+    keywords='greenenv',
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
