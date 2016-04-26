@@ -221,8 +221,9 @@ class clean_env:
         t2.join()
 
     def run_in_env(self, script):
-        p = Popen([self.context.python_exe, script], stdout=PIPE, stderr=PIPE, env=self.new_environ, cwd='.',
-                  start_new_session=True)
+        splitscript = shlex.split(script)
+        p = Popen([self.context.python_exe] + splitscript, stdout=PIPE, stderr=PIPE, env=self.new_environ,
+                  cwd='.', start_new_session=True)
         t1 = Thread(target=self.reader, args=(p.stdout,))
         t1.start()
         t2 = Thread(target=self.reader, args=(p.stderr,))
