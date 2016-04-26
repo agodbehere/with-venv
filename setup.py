@@ -24,7 +24,7 @@ test_requirements = [
 
 setup(
     name='greenenv',
-    version='0.0.1',
+    version='0.0.2',
     description="Context manager controls venv allowing functions to be run in a different interpreter.",
     long_description=readme + '\n\n' + history,
     author="Andrew B Godbehere",
